@@ -133,6 +133,14 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
         """
         Get workflow runs count statistics grouped by status.
         """
+        _initial_status_counts = {
+            "running": 0,
+            "succeeded": 0,
+            "failed": 0,
+            "stopped": 0,
+            "partial-succeeded": 0,
+        }
+
         with self._session_maker() as session:
             # If status filter is provided, return simple count
             if status:
@@ -146,14 +154,9 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
                 )
                 total = session.scalar(count_stmt) or 0
 
-                # Initialize all status counts to 0
                 result = {
                     "total": total,
-                    "running": 0,
-                    "succeeded": 0,
-                    "failed": 0,
-                    "stopped": 0,
-                    "partial-succeeded": 0,
+                    **_initial_status_counts,
                 }
 
                 # Set the count for the filtered status
@@ -176,19 +179,13 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
             results = session.execute(base_stmt).all()
 
             # Build response dictionary
-            status_counts = {
-                "running": 0,
-                "succeeded": 0,
-                "failed": 0,
-                "stopped": 0,
-                "partial-succeeded": 0,
-            }
+            status_counts = _initial_status_counts.copy()
 
             total = 0
-            for status, count in results:
+            for status_val, count in results:
                 total += count
-                if status in status_counts:
-                    status_counts[status] = count
+                if status_val in status_counts:
+                    status_counts[status_val] = count
 
             return {
                 "total": total,
